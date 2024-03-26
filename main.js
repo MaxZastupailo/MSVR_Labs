@@ -10,6 +10,7 @@ let camera3D;                   // A StereoCamera object that represents the cam
 let ModelP = 0.15;
 let ModelM = 0.1;
 let gui;
+let videoMesh, videoTexture;
 
 function deg2rad(angle) {
     return angle * Math.PI / 180;
@@ -20,26 +21,35 @@ function deg2rad(angle) {
 function Model(name) {
     this.name = name;
     this.iVertexBuffer = gl.createBuffer();
+    this.iTextureBuffer = gl.createBuffer();
     this.count = 0;
 
-    this.BufferData = function (vertices) {
+    this.BufferData = function (vertices, textures) {
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STREAM_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iTextureBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textures), gl.STREAM_DRAW);
 
         this.count = vertices.length / 3;
     }
 
-    this.Draw = function () {
+    this.Draw = function (drawLines = true) {
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
         gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(shProgram.iAttribVertex);
 
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iTextureBuffer);
+        gl.vertexAttribPointer(shProgram.iAttribTexture, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(shProgram.iAttribTexture);
+
         /* Draw the six faces of a cube, with different colors. */
-        
-        gl.uniform4fv(shProgram.iColor, [0, 1, 0, 1]);
-        gl.drawArrays(gl.LINE_STRIP, 0, this.count);
+
+        if (drawLines) {
+            gl.uniform4fv(shProgram.iColor, [0, 1, 0, 1]);
+            gl.drawArrays(gl.LINE_STRIP, 0, this.count);
+        }
         gl.uniform4fv(shProgram.iColor, [1, 0, 1, 1]);
         gl.drawArrays(gl.TRIANGLES, 0, this.count);
     }
@@ -85,9 +95,19 @@ function draw() {
     /* Multiply the projection matrix times the modelview matrix to give the
        combined transformation matrix, and send that to the shader program. */
     let modelViewProjection = m4.identity()
-
-
-
+    gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        video
+    );
+    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
+    gl.uniform1i(shProgram.iDrawTexture, true);
+    videoMesh.Draw(false)
+    gl.uniform1i(shProgram.iDrawTexture, false);
     let [project, model] = camera3D.ApplyLeftFrustum()
     modelViewProjection = m4.multiply(project, m4.multiply(model, matAccum1));
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
@@ -164,8 +184,10 @@ function initGL() {
     shProgram.Use();
 
     shProgram.iAttribVertex = gl.getAttribLocation(prog, "vertex");
+    shProgram.iAttribTexture = gl.getAttribLocation(prog, "texture");
     shProgram.iModelViewProjectionMatrix = gl.getUniformLocation(prog, "ModelViewProjectionMatrix");
     shProgram.iColor = gl.getUniformLocation(prog, "color");
+    shProgram.iDrawTexture = gl.getUniformLocation(prog, "drawTexture");
 
     gui = new dat.GUI();
 
@@ -178,7 +200,14 @@ function initGL() {
     gui.add(camera3D, "mNearClippingDistance", 8, 12, 0.01).onChange(draw)
 
     surface = new Model('Surface');
-    surface.BufferData(CreateSurfaceData());
+    surface.BufferData(CreateSurfaceData(), CreateSurfaceData());
+    videoMesh = new Model('Plane');
+    videoMesh.BufferData(
+        [-1, 1, 0, 1, 1, 0, 1, -1, 0,
+        -1, 1, 0, -1, -1, 0, 1, -1, 0],
+        [1, 0, 0, 0, 0, 1,
+            1, 0, 1, 1, 0, 1]
+    )
 
     gl.enable(gl.DEPTH_TEST);
 }
@@ -241,8 +270,19 @@ function init() {
             "<p>Sorry, could not initialize the WebGL graphics context: " + e + "</p>";
         return;
     }
-
+    videoTexture = CreateTexture();
     spaceball = new TrackballRotator(canvas, draw, 0);
 
     draw();
 }
+
+function CreateTexture() {
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return texture;
+}
+setInterval(draw, 50)
