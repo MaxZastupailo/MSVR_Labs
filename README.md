@@ -2,5 +2,5 @@
 <h3>Practical assignment #1 </h3>
 <h4>"Cornucopia"</h4>
 
-![Animation](https://github.com/MaxZastupailo/VGGI_Labs/blob/PA2/Animation.gif)
+![Animation](https://github.com/MaxZastupailo/MSVR_Labs/blob/PA1/Animation.gif)
 ![image info](./images/me.png)
