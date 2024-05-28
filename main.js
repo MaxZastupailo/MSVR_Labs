@@ -24,7 +24,7 @@ function Model(name) {
     this.iTextureBuffer = gl.createBuffer();
     this.count = 0;
 
-    this.BufferData = function (vertices, textures) {
+    this.BufferData = function(vertices, textures) {
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STREAM_DRAW);
@@ -34,7 +34,7 @@ function Model(name) {
         this.count = vertices.length / 3;
     }
 
-    this.Draw = function (drawLines = true) {
+    this.Draw = function(drawLines = true) {
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
         gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
@@ -69,7 +69,7 @@ function ShaderProgram(name, program) {
     // Location of the uniform matrix representing the combined transformation.
     this.iModelViewProjectionMatrix = -1;
 
-    this.Use = function () {
+    this.Use = function() {
         gl.useProgram(this.prog);
     }
 }
@@ -86,7 +86,7 @@ function draw() {
     /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
 
-    let rotateToPointZero = m4.axisRotation([0.707, 0.707, 0], 0.7);
+    let rotateToPointZero = m4.axisRotation([0.707, 0.707, 0], 0.01);
     let translateToPointZero = m4.translation(0, 0, -10);
 
     let matAccum0 = m4.multiply(rotateToPointZero, modelView);
@@ -109,7 +109,7 @@ function draw() {
     videoMesh.Draw(false)
     gl.uniform1i(shProgram.iDrawTexture, false);
     let [project, model] = camera3D.ApplyLeftFrustum()
-    modelViewProjection = m4.multiply(project, m4.multiply(model, matAccum1));
+    modelViewProjection = m4.multiply(project, m4.multiply(model, m4.multiply(matAccum1, magMatrix)));
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
 
     gl.colorMask(true, false, false, false);
@@ -117,7 +117,7 @@ function draw() {
     gl.clear(gl.DEPTH_BUFFER_BIT);
 
     [project, model] = camera3D.ApplyRightFrustum()
-    modelViewProjection = m4.multiply(project, m4.multiply(model, matAccum1));
+    modelViewProjection = m4.multiply(project, m4.multiply(model, m4.multiply(matAccum1, magMatrix)));
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
     gl.colorMask(false, true, true, false);
     surface.Draw();
@@ -243,12 +243,95 @@ function createProgram(gl, vShader, fShader) {
     }
     return prog;
 }
+let magSensor;
+let heading = 0;
+let initialOrientation
+let alpha0 = 0;
+function readMagnetometer() {
+    const newDiv = document.createElement("div")
+    const newContent = document.createTextNode("Hi there and greetings!");
+    newDiv.appendChild(newContent);
+    newDiv.setAttribute("id", "Div1");
+    document.body.appendChild(newDiv)
+    const newDiv2 = document.createElement("div")
+    const newContent2 = document.createTextNode("Hi there and greetings!");
+    newDiv2.appendChild(newContent2);
+    newDiv2.setAttribute("id", "Div2");
+    document.body.appendChild(newDiv2)
+
+    magSensor = new Magnetometer({ frequency: 60 });
+    magSensor.addEventListener('activate', (e) => {
+        let projectedVector = [sensor.x, 0, sensor.z];
+        let perpendicular = m4.cross(projectedVector, [0, 1, 0]);
+        alpha0 = Math.atan2(perpendicular[0], perpendicular[2])
+    })
+    magSensor.addEventListener("reading", (e) => {
+        // document.getElementById('Div1').innerText = Math.floor(magSensor.x) + " " + Math.floor(magSensor.y) + " " + Math.floor(magSensor.z);
+
+        let sensor = [magSensor.x, magSensor.y, magSensor.z]
+        // document.getElementById('Div2').innerText = sensor
+        let perpendicular = m4.cross([0, 1, 0], sensor);
+        document.getElementById('Div1').innerText = Math.floor(magSensor.x) + ' ' + Math.floor(magSensor.y) + ' ' + Math.floor(magSensor.z)
+        let alpha = Math.acos(m4.dot([0, 1, 0], sensor) / m4.length(sensor))
+        // document.getElementById('Div2').innerText = alpha
+
+        // when phone is flat on the table x is 0 while heading north and, it lows around -10 while heading east and around 10 while heading west, z lows around -50 while a little bit up from flat surface (I think it's due to magnet pole of the earth)
+        // y is around 0 at a time
+        // when phone is heading up y lows at -60 and tops at 30 when heading down xs are the same as previous case at a time
+        // z is around 0 while heading perpendicular at previous case
+        // let x = magSensor.x
+        // let y = magSensor.y
+        // let z = magSensor.z
+
+        // let heading = Math.atan2(y, x);
+
+        // // Convert the heading from radians to degrees.
+        // heading = heading * (180 / Math.PI);
+
+        // // Normalize the heading to a range of 0 to 360 degrees.
+        // if (heading < 0) {
+        //     heading = heading + 360;
+        // }
+        // document.getElementById('Div1').innerText = heading
+
+        // Now you can use the heading variable as your compass direction.
+        // direction = heading;
+
+        // // Convert the direction from radians to degrees.
+        // heading = direction * (180 / Math.PI);
+
+        // // Normalize the heading to a range of 0 to 360 degrees.
+        // heading = (heading + 360) % 360;
+        // var pirate = 180.0 / Math.PI;
+        // console.log("Level", pirate * Math.atan2(x, z), pirate * Math.atan2(y, z));
+
+        // heading = pirate * Math.atan2(-x, y);
+        // if (heading < 0) heading += 360;
+        // document.getElementById('Div1').innerText = heading
+
+    })
+    magSensor.start();
+}
 
 
 /**
  * initialization function that will be called when the page has loaded
  */
+let matrixForRotation = m4.identity()
+let magMatrix = m4.identity()
 function init() {
+    window.addEventListener(
+        "deviceorientation",
+        (e) => {
+            matrixForRotation = m4.multiply(
+                m4.xRotation(deg2rad(e.beta)), m4.multiply(
+                    m4.yRotation(deg2rad(e.gamma)),
+                    m4.zRotation(deg2rad(e.alpha))))
+            magMatrix = m4.zRotation(deg2rad(e.alpha))
+        },
+        true,
+    );
+    readMagnetometer()
     let canvas;
     try {
         canvas = document.getElementById("webglcanvas");
