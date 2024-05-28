@@ -109,7 +109,7 @@ function draw() {
     videoMesh.Draw(false)
     gl.uniform1i(shProgram.iDrawTexture, false);
     let [project, model] = camera3D.ApplyLeftFrustum()
-    modelViewProjection = m4.multiply(project, m4.multiply(model, m4.multiply(matAccum1, magMatrix)));
+    modelViewProjection = m4.multiply(project, m4.multiply(model, m4.multiply(matAccum1, matrixForRotation)));
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
 
     gl.colorMask(true, false, false, false);
@@ -117,7 +117,7 @@ function draw() {
     gl.clear(gl.DEPTH_BUFFER_BIT);
 
     [project, model] = camera3D.ApplyRightFrustum()
-    modelViewProjection = m4.multiply(project, m4.multiply(model, m4.multiply(matAccum1, magMatrix)));
+    modelViewProjection = m4.multiply(project, m4.multiply(model, m4.multiply(matAccum1, matrixForRotation)));
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
     gl.colorMask(false, true, true, false);
     surface.Draw();
@@ -327,7 +327,6 @@ function init() {
                 m4.xRotation(deg2rad(e.beta)), m4.multiply(
                     m4.yRotation(deg2rad(e.gamma)),
                     m4.zRotation(deg2rad(e.alpha))))
-            magMatrix = m4.zRotation(deg2rad(e.alpha))
         },
         true,
     );
