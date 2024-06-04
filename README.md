@@ -3,6 +3,6 @@
 <h4>"Cornucopia"</h4>
 
 <p>При записі відео не вдалося записати рух</p>
-<video controls src="video.mp4" title="Video"></video>
-<!-- ![Animation](https://github.com/MaxZastupailo/MSVR_Labs/blob/PA2/Animation.gif) -->
-<!-- ![image info](./images/me.png) -->
+
+https://github.com/MaxZastupailo/MSVR_Labs/assets/66183706/afd2e995-4f4a-4be9-aaab-ee306e5f6606
+
