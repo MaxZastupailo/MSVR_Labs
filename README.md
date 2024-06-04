@@ -6,3 +6,4 @@
 
 https://github.com/MaxZastupailo/MSVR_Labs/assets/66183706/afd2e995-4f4a-4be9-aaab-ee306e5f6606
 
+[РГР Заступайло М.І.docx](https://github.com/user-attachments/files/15566474/default.docx)
